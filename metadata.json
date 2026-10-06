@@ -1,0 +1,6 @@
+{
+  "name": "LineHelpDesk - ระบบแจ้งและติดตามเคสบริการลูกค้า",
+  "description": "ระบบแจ้งเคสและติดตามปัญหาแบบเรียลไทม์ พร้อมแจ้งเตือนผ่าน LINE, รายงานสรุปรายสัปดาห์อัตโนมัติ และแดชบอร์ดวัดประสิทธิภาพทีมงาน รองรับ Supabase",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
