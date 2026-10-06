@@ -468,7 +468,24 @@ CREATE POLICY "Allow public update tickets" ON public.tickets FOR UPDATE USING (
 CREATE POLICY "Allow admin manage categories" ON public.categories FOR ALL USING (true);
 CREATE POLICY "Allow admin manage team_members" ON public.team_members FOR ALL USING (true);
 
--- 5. เปิดใช้งาน Realtime
+-- 5. ข้อมูลเริ่มต้น (Default Categories & Team Members)
+INSERT INTO public.categories (id, name, description, color, icon, is_active)
+VALUES 
+  ('cat-network', 'ปัญหาอินเทอร์เน็ตและเครือข่าย', 'เชื่อมต่อ Wi-Fi ไม่ได้, สาย LAN หลุด, ความเร็วช้า หรือเข้าเว็บไม่ได้', 'emerald', 'Wifi', true),
+  ('cat-hardware', 'อุปกรณ์และคอมพิวเตอร์ชำรุด', 'คอมพิวเตอร์เปิดไม่ติด, จอดำ, ปริ้นเตอร์ไม่ทำงาน หรืออุปกรณ์ต่อพ่วงมีปัญหา', 'blue', 'Monitor', true),
+  ('cat-software', 'ระบบโปรแกรมและซอฟต์แวร์', 'โปรแกรมค้าง, แจ้ง Error, อัปเดตไม่ผ่าน, ฐานข้อมูลขัดข้อง', 'purple', 'Laptop', true),
+  ('cat-account', 'บัญชีผู้ใช้และสิทธิ์การเข้าถึง', 'ลืมรหัสผ่าน, เข้าสู่ระบบไม่ได้, ขอเพิ่มสิทธิ์ หรือสร้างบัญชีใหม่', 'amber', 'Key', true),
+  ('cat-other', 'สอบถามข้อมูลและบริการทั่วไป', 'ขอคำปรึกษาการใช้งาน หรือเรื่องอื่นๆ ที่ไม่ระบุไว้ข้างต้น', 'slate', 'HelpCircle', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.team_members (id, name, role, line_id, phone, email, avatar, specialty)
+VALUES
+  ('tm-1', 'วิชาญ ชัยมงคล (ช่างวิชาญ)', 'Senior IT Support Lead', '@wichan_it', '081-456-7890', 'wichan@helpdesk.local', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', 'ระบบเครือข่าย, เซิร์ฟเวอร์ และฮาร์ดแวร์แม่ข่าย'),
+  ('tm-2', 'กานดา สุขสมบูรณ์ (ช่างกาน)', 'IT Application Specialist', '@kanda_dev', '089-123-4567', 'kanda@helpdesk.local', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80', 'ซอฟต์แวร์, ฐานข้อมูล และระบบสิทธิ์เข้าถึง'),
+  ('tm-3', 'ธีรเดช พัฒนไพบูลย์ (ช่างเดช)', 'On-site Technician & Hardware', '@theeradech_tech', '086-789-0123', 'theeradech@helpdesk.local', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', 'คอมพิวเตอร์ตั้งโต๊ะ, จอภาพ, เครื่องพิมพ์, สายสัญญาณ')
+ON CONFLICT (id) DO NOTHING;
+
+-- 6. เปิดใช้งาน Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.categories;
 `;
