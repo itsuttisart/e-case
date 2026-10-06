@@ -4,10 +4,10 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
-  // Automatically detects GitHub repository name (e.g. /e-case/) on GitHub Actions, or uses relative './'
+  // Automatically detects GitHub repository name (e.g. /e-case/) on GitHub Actions, or defaults to '/e-case/'
   const repoName = process.env.GITHUB_REPOSITORY
     ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}/`
-    : './';
+    : '/e-case/';
 
   return {
     base: repoName,
