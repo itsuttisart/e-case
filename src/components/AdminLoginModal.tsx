@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, User, AlertCircle, X, KeyRound } from 'lucide-react';
 import { setAdminLogin } from '../services/storage';
+import { showToast } from '../services/sweetAlert';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     ) {
       setAdminLogin(true);
       setError('');
+      showToast('เข้าสู่ระบบผู้ดูแลระบบสำเร็จ', 'success');
       onSuccess();
       onClose();
     } else {

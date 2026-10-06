@@ -45,6 +45,12 @@ import {
   formatWeeklyReportLineMessage, 
   sendLineNotification 
 } from '../services/lineService';
+import { 
+  showToast, 
+  showSuccessAlert, 
+  showErrorAlert, 
+  showConfirmAlert 
+} from '../services/sweetAlert';
 
 interface AdminDashboardProps {
   tickets: Ticket[];
@@ -136,11 +142,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         await sendLineNotification(lineMsg, 'status_updated', updated);
       }
 
+      showToast(`อัปเดตสถานะ ${selectedTicketForEdit.id} สำเร็จ!`, 'success');
       setSelectedTicketForEdit(null);
       onRefreshData();
     } catch (err) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกสถานะ');
+      showErrorAlert('เกิดข้อผิดพลาดในการบันทึกสถานะ');
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -160,6 +167,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     saveCategory(newCat);
+    showToast(`เพิ่มหัวข้อ "${newCat.name}" เรียบร้อย`, 'success');
     setNewCatName('');
     setNewCatDesc('');
     setShowAddCatModal(false);
@@ -182,6 +190,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     saveTeamMember(newMem);
+    showToast(`เพิ่มสมาชิก "${newMem.name}" สำเร็จ`, 'success');
     setNewMemberName('');
     setNewMemberLine('');
     setNewMemberPhone('');
@@ -202,6 +211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       webhookUrl: lineWebhook.trim(),
     });
 
+    showToast('บันทึกการตั้งค่า Supabase & LINE แล้ว', 'success');
     setSettingsSavedToast(true);
     setTimeout(() => setSettingsSavedToast(false), 3000);
   };
@@ -211,11 +221,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     try {
       const msg = formatWeeklyReportLineMessage(weeklySummary);
       await sendLineNotification(msg, 'weekly_report');
+      showSuccessAlert('ส่งรายงานเข้า LINE สำเร็จ!', 'ระบบสรุปรายงานสัปดาห์นี้และส่งเข้า LINE เรียบร้อยแล้ว');
       setWeeklySentSuccess(true);
       setTimeout(() => setWeeklySentSuccess(false), 3000);
     } catch (err) {
       console.error(err);
-      alert('ส่งรายงานเข้า LINE ไม่สำเร็จ');
+      showErrorAlert('ส่งรายงานเข้า LINE ไม่สำเร็จ', 'กรุณาตรวจสอบการเชื่อมต่อ Webhook');
     } finally {
       setIsSendingWeeklyLine(false);
     }
@@ -555,79 +566,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          {/* Tickets Table */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">รหัสเคส</th>
-                  <th className="py-3 px-4">ผู้แจ้ง & LINE</th>
-                  <th className="py-3 px-4">หมวดหมู่</th>
-                  <th className="py-3 px-4">ความสำคัญ</th>
-                  <th className="py-3 px-4">สถานะปัจจุบัน</th>
-                  <th className="py-3 px-4">ผู้รับผิดชอบ</th>
-                  <th className="py-3 px-4">เวลาแจ้ง</th>
-                  <th className="py-3 px-4 text-center">จัดการ</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredTickets.length > 0 ? (
-                  filteredTickets.map((t) => {
-                    const statusBadge = getStatusBadgeClass(t.status);
-                    const priBadge = getPriorityBadge(t.priority);
+          {/* Mobile & Tablet Friendly Tickets Cards / Table */}
+          <div className="space-y-3">
+            {filteredTickets.length > 0 ? (
+              filteredTickets.map((t) => {
+                const statusBadge = getStatusBadgeClass(t.status);
+                const priBadge = getPriorityBadge(t.priority);
 
-                    return (
-                      <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-indigo-700">
+                return (
+                  <div
+                    key={t.id}
+                    className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-400 shadow-2xs space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
                           {t.id}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-slate-900">{t.reporterName}</div>
-                          <div className="text-[11px] text-[#06C755] font-medium">LINE: {t.lineContact}</div>
-                        </td>
-                        <td className="py-3 px-4 font-medium text-slate-800">
-                          {t.categoryName}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${priBadge.bg} ${priBadge.text}`}>
-                            {priBadge.label}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}>
-                            {getStatusLabel(t.status)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          {t.assignedMemberName ? (
-                            <span className="font-medium text-slate-800">{t.assignedMemberName}</span>
-                          ) : (
-                            <span className="text-amber-600 font-medium">ยังไม่ระบุ</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
-                          {new Date(t.createdAt).toLocaleDateString('th-TH')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => handleOpenEditTicket(t)}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-colors"
-                          >
-                            อัปเดตสถานะ
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
-                      ไม่พบเคสที่ตรงกับเงื่อนไข
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.bg} ${statusBadge.text} ${statusBadge.border}`}>
+                          {getStatusLabel(t.status)}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${priBadge.bg} ${priBadge.text}`}>
+                        {priBadge.label}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm">{t.categoryName}</div>
+                      <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{t.description}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                      <div>
+                        <span className="font-semibold text-slate-700">{t.reporterName}</span>
+                        <span className="text-[#06C755] ml-1.5 font-medium">LINE: {t.lineContact}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        ช่าง: <span className="text-slate-700 font-medium">{t.assignedMemberName || 'ยังไม่ระบุ'}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-slate-400">
+                        {new Date(t.createdAt).toLocaleDateString('th-TH')}
+                      </span>
+                      <button
+                        onClick={() => handleOpenEditTicket(t)}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-transform"
+                      >
+                        อัปเดตสถานะ & จัดการ
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="py-12 text-center text-slate-400 text-xs">
+                ไม่พบเคสที่ตรงกับเงื่อนไข
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -796,9 +794,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => {
-                      if (confirm(`คุณต้องการลบหัวข้อ "${cat.name}" หรือไม่?`)) {
+                    onClick={async () => {
+                      const ok = await showConfirmAlert(`ลบหัวข้อ "${cat.name}"`, 'คุณแน่ใจหรือไม่ว่าต้องการลบหัวข้อปัญหานี้?');
+                      if (ok) {
                         deleteCategory(cat.id);
+                        showToast(`ลบหัวข้อ "${cat.name}" แล้ว`, 'info');
                         onRefreshData();
                       }
                     }}
@@ -863,13 +863,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div className="pt-2 border-t border-slate-100 flex justify-end">
                   <button
-                    onClick={() => {
-                      if (confirm(`ต้องการลบเจ้าหน้าที่ "${member.name}" หรือไม่?`)) {
+                    onClick={async () => {
+                      const ok = await showConfirmAlert(`ลบเจ้าหน้าที่ "${member.name}"`, 'คุณแน่ใจหรือไม่ว่าต้องการลบเจ้าหน้าที่ท่านนี้?');
+                      if (ok) {
                         deleteTeamMember(member.id);
+                        showToast(`ลบเจ้าหน้าที่ "${member.name}" แล้ว`, 'info');
                         onRefreshData();
                       }
                     }}
-                    className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                    className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 active:scale-95"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> ลบ
                   </button>

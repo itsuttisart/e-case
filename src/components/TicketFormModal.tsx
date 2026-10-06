@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { 
   X, 
   Upload, 
+  Camera,
   Image as ImageIcon, 
   CheckCircle, 
   AlertCircle, 
@@ -9,12 +10,13 @@ import {
   MessageSquare, 
   Share2, 
   Search,
-  ExternalLink
+  ChevronDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Category, Priority, Ticket } from '../types';
 import { createTicket } from '../services/storage';
 import { formatTicketCreatedLineMessage, sendLineNotification } from '../services/lineService';
+import { showErrorAlert, showToast } from '../services/sweetAlert';
 
 interface TicketFormModalProps {
   isOpen: boolean;
@@ -43,6 +45,7 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
   const [copied, setCopied] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -69,7 +72,7 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reporterName.trim() || !description.trim() || !lineContact.trim()) {
-      alert('กรุณากรอกข้อมูลที่จำเป็น: ชื่อผู้แจ้ง, รายละเอียดปัญหา และ Line ติดต่อกลับ');
+      showErrorAlert('กรุณากรอกข้อมูลให้ครบถ้วน', 'ต้องระบุ: ชื่อผู้แจ้ง, รายละเอียดปัญหา และ Line ติดต่อกลับ');
       return;
     }
 
@@ -93,16 +96,18 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
 
       // Trigger Confetti
       confetti({
-        particleCount: 80,
+        particleCount: 70,
         spread: 60,
         origin: { y: 0.6 },
       });
+
+      showToast(`เปิดเคส ${newTicket.id} สำเร็จแล้ว!`, 'success');
 
       setCreatedTicket(newTicket);
       onTicketCreated(newTicket);
     } catch (err) {
       console.error(err);
-      alert('เกิดข้อผิดพลาดในการบันทึกเคส กรุณาลองใหม่อีกครั้ง');
+      showErrorAlert('เกิดข้อผิดพลาดในการบันทึกเคส', 'กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsSubmitting(false);
     }
@@ -127,21 +132,28 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+      
+      {/* Mobile Bottom Sheet Container */}
+      <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border-t sm:border border-slate-100 max-h-[92vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-250">
         
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
-              <MessageSquare className="w-5 h-5 text-white" />
+        {/* iOS-Style Drag Handle */}
+        <div className="pt-2.5 pb-1 flex justify-center sm:hidden">
+          <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+        </div>
+
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-lg leading-tight">
-                {createdTicket ? 'เปิดเคสสำเร็จแล้ว!' : 'แจ้งเคสปัญหา / ติดตามการบริการ'}
+              <h3 className="font-bold text-base leading-tight">
+                {createdTicket ? 'เปิดเคสเรียบร้อยแล้ว!' : 'แบบฟอร์มแจ้งเคสปัญหา'}
               </h3>
-              <p className="text-xs text-emerald-100">
-                {createdTicket ? 'บันทึกข้อมูลเรียบร้อยและส่งแจ้งเตือนเข้า LINE แล้ว' : 'กรอกรายละเอียดเพื่อส่งเรื่องให้ทีมงานเข้าดูแลอย่างรวดเร็ว'}
+              <p className="text-[11px] text-emerald-100">
+                {createdTicket ? 'ส่งแจ้งเตือนเข้า LINE เจ้าหน้าที่แล้ว' : 'เปิดเรื่องได้ทันที ไม่ต้องลงชื่อเข้าใช้'}
               </p>
             </div>
           </div>
@@ -150,247 +162,226 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
               handleResetForm();
               onClose();
             }}
-            className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-full text-emerald-100 hover:text-white hover:bg-white/10 active:scale-90 transition-transform"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        {createdTicket ? (
-          /* SUCCESS SCREEN */
-          <div className="p-6 sm:p-8 text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle className="w-10 h-10 animate-bounce" />
-            </div>
-
-            <div>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                ส่งเรื่องสำเร็จแล้ว
-              </span>
-              <h4 className="text-2xl font-bold text-slate-800 mt-2">ขอบคุณสำหรับการแจ้งข้อมูล</h4>
-              <p className="text-sm text-slate-600 mt-1 max-w-md mx-auto">
-                ระบบได้บันทึกเคสของคุณและส่งแจ้งเตือนไปยังเจ้าหน้าที่ทีมซัพพอร์ตเรียบร้อยแล้ว
-              </p>
-            </div>
-
-            {/* Ticket Card */}
-            <div className="p-4.5 rounded-2xl bg-slate-50 border border-slate-200 text-left max-w-md mx-auto space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
-                <div>
-                  <span className="text-xs text-slate-500 font-medium">รหัสเคสของคุณ (Ticket ID)</span>
-                  <div className="text-xl font-mono font-bold text-emerald-700 tracking-wide">
-                    {createdTicket.id}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyTicketId}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-medium text-slate-700 shadow-xs transition-colors"
-                >
-                  <Copy className="w-3.5 h-3.5 text-slate-500" />
-                  {copied ? 'คัดลอกแล้ว!' : 'คัดลอกรหัส'}
-                </button>
+        {/* Modal Scrollable Body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-5">
+          {createdTicket ? (
+            /* ================= SUCCESS SCREEN ================= */
+            <div className="text-center space-y-5 py-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle className="w-10 h-10 animate-bounce" />
               </div>
 
-              <div className="text-xs space-y-1.5 text-slate-600">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">ผู้แจ้ง:</span>
-                  <span className="font-semibold text-slate-800">{createdTicket.reporterName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">หัวข้อ:</span>
-                  <span className="font-semibold text-slate-800">{createdTicket.categoryName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">ระดับความสำคัญ:</span>
-                  <span className="font-semibold text-rose-600">
-                    {createdTicket.priority === 'urgent_highest' ? 'ด่วนที่สุด' : createdTicket.priority === 'urgent' ? 'ด่วน' : 'ไม่รีบ'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">LINE สำหรับติดต่อ:</span>
-                  <span className="font-semibold text-[#06C755]">{createdTicket.lineContact}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Notification Alert Status Banner */}
-            <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs max-w-md mx-auto">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#06C755] animate-ping" />
-              <span>ส่งแจ้งเตือนเข้าระบบ LINE เรียบร้อย พร้อมการติดตามสถานะ 24 ชม.</span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onTrackTicket(createdTicket.id);
-                  onClose();
-                  handleResetForm();
-                }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm transition-all"
-              >
-                <Search className="w-4 h-4" />
-                ติดตามสถานะเคสนี้เลย
-              </button>
-
-              <a
-                href={`https://line.me/R/share?text=${encodeURIComponent(formatTicketCreatedLineMessage(createdTicket))}`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white text-sm font-semibold shadow-sm transition-all"
-              >
-                <Share2 className="w-4 h-4" />
-                แชร์เข้าแอป LINE
-              </a>
-
-              <button
-                type="button"
-                onClick={() => {
-                  handleResetForm();
-                }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors"
-              >
-                แจ้งเคสเพิ่มเติม
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* INPUT FORM */
-          <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-5">
-            {/* 1. ชื่อผู้แจ้ง */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                1. ชื่อ-นามสกุล ผู้แจ้งเคส <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={reporterName}
-                onChange={(e) => setReporterName(e.target.value)}
-                placeholder="เช่น สมชาย ใจดี, คุณกนกวรรณ (แผนกการเงิน)"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm placeholder:text-slate-400"
-              />
-            </div>
-
-            {/* 2. หัวข้อปัญหา (Admin สามารถปรับได้) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  2. หัวข้อปัญหา / หมวดหมู่ <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[11px] text-slate-400">กำหนดโดยผู้ดูแลระบบ</span>
-              </div>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm bg-white"
-              >
-                {categories
-                  .filter((c) => c.isActive !== false)
-                  .map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-              </select>
-              {categories.find((c) => c.id === categoryId)?.description && (
-                <p className="text-xs text-slate-500 mt-1 pl-1">
-                  💡 {categories.find((c) => c.id === categoryId)?.description}
+              <div>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  ส่งเรื่องเรียบร้อย
+                </span>
+                <h4 className="text-xl font-bold text-slate-800 mt-2">บันทึกเคสของคุณสำเร็จ</h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  ระบบได้ส่งแจ้งเตือนไปยังทีมช่างเรียบร้อยแล้ว
                 </p>
-              )}
-            </div>
+              </div>
 
-            {/* 3. รายละเอียดปัญหา */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                3. รายละเอียดปัญหาที่พบ <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                required
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="ระบุอาการของปัญหา สถานที่หรือแผนก เช่น เข้าใช้งาน Wi-Fi ชั้น 3 ไม่ได้ ขึ้นสัญลักษณ์ตกใจสีเหลือง หรือคอมเปิดไม่ติด..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm placeholder:text-slate-400 resize-none"
-              />
-            </div>
+              {/* Ticket ID Box */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                  <div>
+                    <span className="text-[11px] text-slate-500 font-medium">รหัสเคสของคุณ</span>
+                    <div className="text-xl font-mono font-black text-emerald-700">
+                      {createdTicket.id}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyTicketId}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 active:scale-95 shadow-2xs"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copied ? 'คัดลอกแล้ว!' : 'คัดลอก'}</span>
+                  </button>
+                </div>
 
-            {/* 4. ความสำคัญ (ด่วนที่สุด / ด่วน / ไม่รีบ) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                4. ระดับความสำคัญ <span className="text-rose-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2.5">
-                {/* ด่วนที่สุด */}
+                <div className="text-xs space-y-1.5 text-slate-600">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">ผู้แจ้ง:</span>
+                    <span className="font-semibold text-slate-800">{createdTicket.reporterName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">เรื่อง:</span>
+                    <span className="font-semibold text-slate-800">{createdTicket.categoryName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">ระดับความเร่งด่วน:</span>
+                    <span className="font-bold text-rose-600">
+                      {createdTicket.priority === 'urgent_highest' ? 'ด่วนที่สุด' : createdTicket.priority === 'urgent' ? 'ด่วน' : 'ไม่รีบ'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">LINE สำหรับติดต่อ:</span>
+                    <span className="font-bold text-[#06C755]">{createdTicket.lineContact}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Mobile */}
+              <div className="space-y-2.5 pt-2">
                 <button
                   type="button"
-                  onClick={() => setPriority('urgent_highest')}
-                  className={`p-3 rounded-xl border text-center transition-all ${
-                    priority === 'urgent_highest'
-                      ? 'border-red-500 bg-red-50 ring-2 ring-red-400 text-red-800 font-bold shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
-                  }`}
+                  onClick={() => {
+                    onTrackTicket(createdTicket.id);
+                    onClose();
+                    handleResetForm();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-md active:scale-98"
                 >
-                  <div className="flex items-center justify-center gap-1.5 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                    <span>ด่วนที่สุด</span>
-                  </div>
-                  <span className="text-[10px] text-red-600 block mt-0.5 font-normal">กระทบงานหลักทันที</span>
+                  <Search className="w-4 h-4" />
+                  <span>ติดตามสถานะเคสนี้ทันที</span>
                 </button>
 
-                {/* ด่วน */}
-                <button
-                  type="button"
-                  onClick={() => setPriority('urgent')}
-                  className={`p-3 rounded-xl border text-center transition-all ${
-                    priority === 'urgent'
-                      ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-400 text-amber-800 font-bold shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
-                  }`}
+                <a
+                  href={`https://line.me/R/share?text=${encodeURIComponent(formatTicketCreatedLineMessage(createdTicket))}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#06C755] text-white font-bold text-sm shadow-sm active:scale-98"
                 >
-                  <div className="flex items-center justify-center gap-1.5 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span>ด่วน</span>
-                  </div>
-                  <span className="text-[10px] text-amber-700 block mt-0.5 font-normal">ต้องการแก้ไขในวัน</span>
-                </button>
+                  <Share2 className="w-4 h-4" />
+                  <span>แชร์ข้อมูลเข้าห้องแชต LINE</span>
+                </a>
 
-                {/* ไม่รีบ */}
                 <button
                   type="button"
-                  onClick={() => setPriority('normal')}
-                  className={`p-3 rounded-xl border text-center transition-all ${
-                    priority === 'normal'
-                      ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-400 text-emerald-800 font-bold shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
-                  }`}
+                  onClick={handleResetForm}
+                  className="w-full py-2.5 text-xs text-slate-500 font-semibold"
                 >
-                  <div className="flex items-center justify-center gap-1.5 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span>ไม่รีบ</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-700 block mt-0.5 font-normal">ตามรอบคิวปกติ</span>
+                  + แจ้งเคสปัญหาอื่นๆ เพิ่มเติม
                 </button>
               </div>
             </div>
-
-            {/* 5. รูปภาพประกอบ */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-700">
-                  5. รูปภาพประกอบปัญหา (ถ้ามี)
+          ) : (
+            /* ================= INPUT FORM (MOBILE FIRST) ================= */
+            <form id="ticket-report-form" onSubmit={handleSubmit} className="space-y-4">
+              
+              {/* 1. ชื่อผู้แจ้ง */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  1. ชื่อผู้แจ้งปัญหา <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-400">แนบรูปภาพหน้าจอหรือรูปถ่าย</span>
+                <input
+                  type="text"
+                  required
+                  value={reporterName}
+                  onChange={(e) => setReporterName(e.target.value)}
+                  placeholder="เช่น สมชาย ใจดี หรือ คุณกนกวรรณ (ฝ่ายบัญชี)"
+                  className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm bg-slate-50/50"
+                />
               </div>
 
-              {/* Upload area */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-emerald-50/30"
-              >
+              {/* 2. หัวข้อปัญหา */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  2. หัวข้อปัญหา / ประเภทงาน <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm bg-slate-50/50 appearance-none font-medium pr-10"
+                  >
+                    {categories
+                      .filter((c) => c.isActive !== false)
+                      .map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-4 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 3. รายละเอียดปัญหา */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  3. รายละเอียดปัญหาที่พบ <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="ระบุอาการของปัญหา เช่น คอมพิวเตอร์เปิดไม่ติด มีเสียงร้อง, อินเทอร์เน็ตหลุดบ่อย..."
+                  className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm bg-slate-50/50 resize-none"
+                />
+              </div>
+
+              {/* 4. ระดับความสำคัญ (Large touch buttons) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  4. ระดับความสำคัญ <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPriority('urgent_highest')}
+                    className={`p-3 rounded-2xl border text-center transition-all active:scale-95 ${
+                      priority === 'urgent_highest'
+                        ? 'border-red-500 bg-red-50 ring-2 ring-red-400 text-red-800 font-bold shadow-xs'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                      <span>ด่วนที่สุด</span>
+                    </div>
+                    <span className="text-[10px] text-red-600 block mt-0.5">งานสะดุดทันที</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPriority('urgent')}
+                    className={`p-3 rounded-2xl border text-center transition-all active:scale-95 ${
+                      priority === 'urgent'
+                        ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-400 text-amber-800 font-bold shadow-xs'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <span>ด่วน</span>
+                    </div>
+                    <span className="text-[10px] text-amber-700 block mt-0.5">ในวันนี้</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPriority('normal')}
+                    className={`p-3 rounded-2xl border text-center transition-all active:scale-95 ${
+                      priority === 'normal'
+                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-400 text-emerald-800 font-bold shadow-xs'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span>ไม่รีบ</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-700 block mt-0.5">ตามรอบคิว</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 5. รูปภาพประกอบ (Smartphone Camera + Gallery) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  5. ถ่ายรูปหรือแนบรูปภาพปัญหา (ถ้ามี)
+                </label>
+
+                {/* Hidden File Inputs */}
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -399,98 +390,123 @@ export const TicketFormModal: React.FC<TicketFormModalProps> = ({
                   multiple
                   className="hidden"
                 />
-                <div className="flex flex-col items-center justify-center gap-1 text-slate-500">
-                  <Upload className="w-5 h-5 text-emerald-600" />
-                  <span className="text-xs font-medium text-slate-700">
-                    คลิกเพื่อเลือกรูปภาพ หรือลากไฟล์มาวางที่นี่
-                  </span>
-                  <span className="text-[11px] text-slate-400">รองรับ PNG, JPG, JPEG (ไม่จำกัดจำนวน)</span>
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                />
+
+                {/* Smartphone Trigger Buttons */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 font-bold text-xs active:scale-95 transition-all"
+                  >
+                    <Camera className="w-4 h-4 text-emerald-600" />
+                    <span>ถ่ายรูปตอนนี้</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs active:scale-95 transition-all"
+                  >
+                    <ImageIcon className="w-4 h-4 text-slate-500" />
+                    <span>เลือกจากคลังภาพ</span>
+                  </button>
                 </div>
+
+                {/* Thumbnail Previews */}
+                {images.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto py-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-slate-200">
+                        <img src={img} alt={`Attached ${idx}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow-xs"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Preview thumbnails */}
-              {images.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2.5">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
-                      <img src={img} alt={`Attached ${idx}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-rose-600 text-white opacity-90 hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+              {/* 6. Line ติดต่อกลับ */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    6. LINE ID สำหรับติดต่อกลับ <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={lineContact}
+                      onChange={(e) => setLineContact(e.target.value)}
+                      placeholder="เช่น Line ID: somchai_it หรือ เบอร์โทร"
+                      className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm bg-slate-50/50"
+                    />
+                    <div className="absolute left-3.5 top-3.5 text-[#06C755] font-black text-sm">
+                      L
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 6. Line ติดต่อกลับ และเบอร์โทร */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  6. LINE ติดต่อกลับ <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={lineContact}
-                    onChange={(e) => setLineContact(e.target.value)}
-                    placeholder="เช่น Line ID หรือ @user"
-                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                  />
-                  <div className="absolute left-3 top-3 text-[#06C755] font-bold text-xs">
-                    L
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">ใช้สำหรับการส่งแจ้งเตือนสถานะความคืบหน้า</p>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    เบอร์โทรศัพท์ติดต่อ (สำรอง)
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="เช่น 081-234-5678"
+                    className="w-full px-3.5 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base sm:text-sm bg-slate-50/50"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  เบอร์โทรศัพท์ (สำรอง)
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="เช่น 081-234-5678"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                />
-              </div>
-            </div>
+            </form>
+          )}
+        </div>
 
-            {/* Submit Buttons */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 text-sm font-medium transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-sm font-semibold shadow-md transition-all active:scale-98 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>กำลังบันทึกและส่ง LINE...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    <span>ยืนยันแจ้งเคสปัญหา</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+        {/* Sticky Mobile Submit Footer */}
+        {!createdTicket && (
+          <div className="p-4 bg-white border-t border-slate-100 flex items-center gap-3 shrink-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-1/3 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm active:bg-slate-100 transition-colors"
+            >
+              ยกเลิก
+            </button>
+            <button
+              type="submit"
+              form="ticket-report-form"
+              disabled={isSubmitting}
+              className="w-2/3 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-sm shadow-md active:scale-98 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>กำลังส่งข้อมูล...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>ยืนยันแจ้งเคสทันที</span>
+                </>
+              )}
+            </button>
+          </div>
         )}
 
       </div>
